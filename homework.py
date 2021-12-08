@@ -80,10 +80,10 @@ class Running(Training):
         coeff_2 = 20
         speed = self.get_mean_speed()
         calories = (
-                (coeff_1 * speed - coeff_2)
-                * self.weight
-                / self.M_IN_KM
-                * self.duration_minutes
+            (coeff_1 * speed - coeff_2)
+            * self.weight
+            / self.M_IN_KM
+            * self.duration_minutes
         )
         return calories
 
@@ -107,8 +107,8 @@ class SportsWalking(Training):
         coeff_3 = 0.029
         speed = self.get_mean_speed()
         calories = self.duration_minutes * (
-                coeff_1 * self.weight
-                + (speed ** coeff_2 // self.height) * coeff_3 * self.weight
+            coeff_1 * self.weight
+            + (speed ** coeff_2 // self.height) * coeff_3 * self.weight
         )
         return calories
 
