@@ -1,15 +1,15 @@
 """Модуль фитнес-трекера для расчёта и отображения информации
 о прошедшей тренировке по данным от блока датчиков."""
 
-from typing import Sequence, ClassVar
-from dataclasses import dataclass, fields
+from typing import Sequence, ClassVar, Dict
+from dataclasses import dataclass, fields, asdict
 
 MIN_IN_H = 60
-UNKNOWN_WORKOUT_TYPE_ERROR_TEMPLATE = "Неизвестный тип тренировки: {}"
-WRONG_PACKAGE_SIZE_ERROR_TEMPLATE = (
-    "Получен пакет размера {actual_size}. "
-    "Для тренировки типа {workout_type} "
-    "ожидается пакет размера {expected_size}."
+UNKNOWN_WORKOUT_TYPE_ERROR = "Неизвестный тип тренировки: {}"
+WRONG_PACKAGE_SIZE_ERROR = (
+    "Получен пакет размера {actual}. "
+    "Для тренировки типа {workout} "
+    "ожидается пакет размера {expected}."
 )
 
 
@@ -18,7 +18,7 @@ class InfoMessage:
 
     """Информационное сообщение о тренировке."""
 
-    INFO_MESSAGE_TEMPLATE: ClassVar[str] = (
+    MESSAGE: ClassVar[str] = (
         'Тип тренировки: {training_type}; '
         'Длительность: {duration:.3f} ч.; '
         'Дистанция: {distance:.3f} км; '
@@ -34,13 +34,7 @@ class InfoMessage:
 
     def get_message(self) -> str:
         """Возвращает строку с информационным сообщением о тренировке."""
-        return self.INFO_MESSAGE_TEMPLATE.format(
-            training_type=self.training_type,
-            duration=self.duration,
-            distance=self.distance,
-            speed=self.speed,
-            calories=self.calories,
-        )
+        return self.MESSAGE.format(**asdict(self))
 
 
 @dataclass
@@ -151,48 +145,33 @@ class Swimming(Training):
         )
 
 
-class PackageValidationError(Exception):
-    """Базовый класс ошибок валидации пакетов."""
-    pass
-
-
-class PackageTypeError(PackageValidationError):
-    """Неизвестный тип тренировки в пакете."""
-    pass
-
-
-class PackageSizeError(PackageValidationError):
-    """Размер пакета не соответствует ожидаемому."""
-    pass
-
-
 TRAINING_CLASSES = {
     'WLK': SportsWalking,
     'RUN': Running,
     'SWM': Swimming
 }
+TRAINING_FIELDS_COUNT: Dict[str, int] = {
+    key: len(fields(class_))
+    for key, class_ in TRAINING_CLASSES.items()
+}
 
 
 def read_package(workout_type: str, data: Sequence[float]) -> Training:
     """Прочитать данные полученные от датчиков."""
-    class_ = TRAINING_CLASSES.get(workout_type)
-    if class_ is None:
-        raise PackageTypeError(
-            UNKNOWN_WORKOUT_TYPE_ERROR_TEMPLATE.format(workout_type)
-        )
+    if workout_type not in TRAINING_CLASSES:
+        raise ValueError(UNKNOWN_WORKOUT_TYPE_ERROR.format(workout_type))
 
     actual_package_size = len(data)
-    expected_package_size = len(fields(class_))
+    expected_package_size = TRAINING_FIELDS_COUNT[workout_type]
     if actual_package_size != expected_package_size:
-        raise PackageSizeError(
-            WRONG_PACKAGE_SIZE_ERROR_TEMPLATE.format(
-                actual_size=actual_package_size,
-                expected_size=expected_package_size,
-                workout_type=workout_type
+        raise ValueError(
+            WRONG_PACKAGE_SIZE_ERROR.format(
+                actual=actual_package_size,
+                expected=expected_package_size,
+                workout=workout_type
             )
         )
-
-    return class_(*data)
+    return TRAINING_CLASSES[workout_type](*data)
 
 
 def main(training: Training) -> None:
@@ -212,5 +191,5 @@ if __name__ == '__main__':
     for workout_type, data in packages:
         try:
             main(read_package(workout_type, data))
-        except PackageValidationError as e:
-            print(e)
+        except ValueError as error:
+            print(error)
